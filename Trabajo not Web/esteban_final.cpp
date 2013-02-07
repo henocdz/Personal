@@ -66,7 +66,7 @@ bool Pelicula::agregar(string ruta_archivo){
 		return false;
 
 	//Imprime en el archivo la linea con el formato correspondiente
-	archivo_salida<<codigo<<"|"<<titulo<<"|"<<anio<<"|"<<nRentas<<"|"<<nCopias<<endl;
+	archivo_salida<<codigo<<"|"<<titulo<<"|"<<director<<"|"<<anio<<"|"<<nRentas<<"|"<<nCopias<<endl;
 
 	//Cierra el archivo.
 	archivo_salida.close();
@@ -88,6 +88,7 @@ bool Pelicula::rentar(int c){
 
 	//Aumenta en uno la cantidad de veces rentada
 	nRentas++;
+	flag = true;
 	nCliente = c;
 	return true;
 }
@@ -99,8 +100,12 @@ bool Pelicula::devolver(){
 	//O algo que no se ha rentado
 	if(nCopias == 0 || nRentas == 0) 
 		return false;
-
 	nRentas--;
+
+
+	if(nRentas == 0)
+		flag = false;
+
 	return true; //Falta
 }
 bool Pelicula::mostrar(){
@@ -156,6 +161,32 @@ bool buscarPeliculaNombre(string titulo, Piila p){
 	return false;
 }
 
+void guardar(Piila p,string archivo){
+	
+	
+
+	//Se abre el archivo para resetear y poder escribir desde cero
+	ofstream archivo_salida(archivo.c_str());
+	//Comprueba si se pudo abrir el archivo
+	if(!archivo_salida)
+		return;
+	//Cierra el archivo.
+	archivo_salida.close();
+
+	if(p.h == NULL)
+		return;
+	
+	Pelis *aux;
+	aux = p.h;
+	while(aux != NULL){
+		if(!aux->p->agregar(archivo)) //Agrega al archivo
+			cout<<"Error al guardar la pelicula: "<<aux->p->getTitulo()<<endl;
+
+		aux = aux->sig;
+	}
+
+	//Guarda en el archivo al finalizar 
+}
 
 //Regresa un apuntador a la pelicula que se busca
 Pelicula * obtenerPelicula(int num_peli, Piila p){
@@ -173,13 +204,98 @@ Pelicula * obtenerPelicula(int num_peli, Piila p){
 
 
 
+//Obtiene las peliculas actuales en el archivo
+int inicio(Piila *p, string archivo){
+
+	//Abre el archivo 
+	ifstream archivo_lectura(archivo.c_str());
+	string f;
+
+	//Si el archivo no se puede abrir, cierra el programa
+	if(!archivo_lectura){
+		cout<<"Algo salio mal"<<endl;
+		system("PAUSE");
+		exit(1);
+	}
+	
+	char l[100];
+	int i,pos,prevpos,pls=0;
+	string c,t,d,r,co,a;
+	//Recorre el archivo linea por linea
+	while(!archivo_lectura.eof()){
+		//Obtiene una nueva linea
+		archivo_lectura.getline(l,99);
+		pls++; //Aumenta el numero de peliculas en archivo
+		
+		f = l; //Se convierte la linea a string
+		i = 0;
+		if(f.empty())
+			continue;
+
+		while(i<6){ //Formatea la cadena del archivo y extrae informacion de pelicula
+			prevpos = pos;
+			pos = f.find("|");
+			if(i==0) //Primer iteracion es el codigo
+				c = f.substr(0,pos);
+			if(i==1) //Titulo de pelicula
+				t = f.substr(0,pos);
+			if(i==2) //Director
+				d = f.substr(0,pos);
+			if(i==3) //Año
+				a = f.substr(0,pos);
+			if(i==4) //Numero de rentas
+				r = f.substr(0,pos);
+			if(i==5) //Numero de copias disponibles
+				co = f;
+				
+			f = f.substr(pos+1); //Cambia el string que se formatea
+			i++;
+		}			
+		
+		//Se crea un nuevo objeto 
+		Pelicula *pe = new Pelicula(atoi(c.c_str()),t,d,atoi(a.c_str()),atoi(r.c_str()),atoi(co.c_str())); 
+
+
+		//Una nueva estructura para guardar el objeto y el apuntador al que le sigue
+		Pelis *nueva;
+
+		//Crea memoria dinamica para el nuevo elemento de la lista
+		if((nueva = (Pelis *)malloc(sizeof(Pelis))) == NULL ){
+			cout<<" Ha ocurrido un error al cargar la pelicula"<<t<<". \n";
+			continue;
+		}
+
+		//Si la lista esta vacia entonces el elemento que le sigue sera nulo
+		if(p->h == NULL)
+			nueva->sig = NULL;
+		else //Si ya hay elementos, se guarda la direccion 
+			//del elemento registrado una vez antes
+			nueva->sig = p->h;
+
+		
+
+		nueva->p = pe;
+		//Asigna la cabecera de la pila que se recibe por referencia
+		//Y asi cambia el inicio de la pila en "int main()"
+		p->h = nueva;
+	}
+	
+	//Cierra el archivo
+	archivo_lectura.close();
+	return pls;
+	system("PAUSE");
+}
 
 int main(){
 	char op;
 	int pls = 0;
 
+
 	Piila peliculas;
 	peliculas.h = NULL;
+
+	pls = inicio(&peliculas,"altas.txt");
+
 
 	while(op != '6'){
 		//El programa sale hasta que se digite 6 (salir)
@@ -196,8 +312,9 @@ int main(){
 		cin>>op; //Se solicita opcion al usuario
 			
 		switch(op){
-			case '1':{ //Se agrega pelicula
-				int nCliente,nRentas,nCopias;
+			case '1': 
+			{ //Se agrega pelicula
+				int nCliente,nRentas,nCopias,anio;
 				string archivo, titulo, director;
 				pls++;
 				system("CLS");
@@ -206,41 +323,41 @@ int main(){
 				cout<<"\t Titulo: ";
 				cin>>ws;
 				getline(cin,titulo);
-				cout<<"\n\t Director: ";
+				cout<<"\t Director: ";
 				getline(cin,director);
-				cout<<"\n\t Numero de rentas: ";
+				cout<<"\t Anio: ";
+				cin>>anio;
+				cout<<"\t Numero de rentas: ";
 				cin>>nRentas;
-				cout<<"\n\t Numero de Copias: ";
+				cout<<"\t Numero de Copias: ";
 				cin>>nCopias;
 
 
-				if(buscarPeliculaNombre(titulo,peliculas)){
+				if(buscarPeliculaNombre(titulo,peliculas) ){
 					//Busca el nombre de la pelicula, si existe no permite continuar
 					cout<<"La pelicula YA EXISTE.\n\n"<<endl;
 					system("PAUSE");
 					continue;
 				}
-
+				/*|| buscarPelicula(code,peliculas)*/
 				//Se crea objeto Pelicula para almacenar en arreglo
-				Pelicula *p = new Pelicula(pls,titulo,director,nCliente,nRentas,nCopias); 
+				Pelicula *p = new Pelicula(pls,titulo,director,anio,nRentas,nCopias); 
 
 				//Se agrega al arreglo
 
 				system("CLS");
 				//Se le indica al objeto que se guarde en archivo
 				
-				if(!p->agregar("altas.txt")) //Se comprueba que se haya guardado en el archivo
-					cout<<" Ha ocurrido un error al guardar la pelicula"<<titulo<<". \n";
-				else{
-					cout<<"Se ha guardado la pelicula "<<titulo<<" de manera exitosa \n\n";
-					//Se guarda en logica del programa.
-					Pelis *nueva;
+				
+				cout<<"Se ha guardado la pelicula "<<titulo<<" de manera exitosa \n\n";
+				//Se guarda en logica del programa.
+				Pelis *nueva;
 
-					//Crea memoria dinamica para el nuevo elemento de la lista
-					if((nueva = (Pelis *)malloc(sizeof(Pelis))) == NULL ){
-						cout<<" Ha ocurrido un error al guardar la pelicula"<<titulo<<". \n";
-						continue;
-					}
+				//Crea memoria dinamica para el nuevo elemento de la lista
+				if((nueva = (Pelis *)malloc(sizeof(Pelis))) == NULL ){
+					cout<<" Ha ocurrido un error al guardar la pelicula"<<titulo<<". \n";
+					continue;
+				}
 
 					//Si la lista esta vacia entonces el elemento que le sigue sera nulo
 					if(peliculas.h == NULL)
@@ -251,7 +368,7 @@ int main(){
 
 					nueva->p = p;
 					peliculas.h = nueva;	
-				}
+				
 
 				system("PAUSE");
 			} 
@@ -273,12 +390,34 @@ int main(){
 					continue;
 				}
 
-				if(!p->borrar()){ //Intenta borrar la pelicula del archivo
-					cout<<"\n\n Ha ocurrido un error al borrar la pelicula #"<<code<<". \n";				
-				}else{
-					cout<<"Se ha borrado la pelicula #"<<code<<" de manera exitosa \n";
-					//Se incluira codigo para eliminar la pelicula 
-					// de la parte logica del programa
+				//Se borrara de la parte logica, en el archivo se borrara al final siempre.
+
+				Pelis *aux,*prev,*del;
+				aux = peliculas.h;
+				prev = aux;
+				int it = 0;
+				while(aux != NULL){ //Recorre la pila y borra cuando encuentra el codigo
+					if(aux->p->getCodigo() == code){
+						del = aux;
+
+						if(it == 0) 
+							peliculas.h = aux->sig;
+						else
+							prev->sig = aux->sig;
+
+						delete del;
+						pls--; //Hay una pelicula menos
+
+						if(pls<=0) //Si ya no hay pelicula se pone la cabecera en NULL
+							peliculas.h = NULL;
+
+
+						break;
+					}
+
+					it++;
+					prev = aux;
+					aux = aux->sig;
 				}
 				system("PAUSE");
 			}//Se borra una pelicula
@@ -322,7 +461,7 @@ int main(){
 				//Buscar pelicula y regresar apuntador a objeto Pelicula
 				//Se verifica que exista una pelicula con ese codigo
 				Pelicula *p;
-				if(buscarPelicula(code,peliculas)){ 
+				if(buscarPelicula(code,peliculas)){
 					//Se guarda la referencia al objeto
 					p = obtenerPelicula(code,peliculas);
 				}else{
@@ -360,6 +499,7 @@ int main(){
 					//Invoca al metodo que muestra la informacion del elemento Pelicula
 					if(aux->p->getRentas() > 0) //Comprueba que se haya rentado
 						aux->p->mostrar();
+
 					aux = aux->sig;
 				} 
 
@@ -373,5 +513,11 @@ int main(){
 			break;
 		}
 	}
+
+	//Guarda las peliculas al finalizar el programa
+	guardar(peliculas,"altas.txt");
+	
 	return 0;
 }
+
+
